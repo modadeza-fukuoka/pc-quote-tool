@@ -427,12 +427,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const discountEx = n('discount-value');
 
     // 利益管理（値引き前）
-    // 販売金額（税抜）= 原価合計（税抜）+ 利益 + 送料
-    const sellingBefore = cost + (profitInput * qty) + shipping;
-    const profitBefore = sellingBefore - cost;
+    // 原価 = パーツ原価（税抜）+ 送料
+    const costWithShipping = cost + shipping;
+    // 販売金額（税抜）= 原価 + 送料 + 利益
+    const sellingBefore = costWithShipping + (profitInput * qty);
+    const profitBefore = sellingBefore - costWithShipping;
     const rateBefore = sellingBefore > 0 ? (profitBefore / sellingBefore * 100) : 0;
 
-    document.getElementById('cost-total').textContent = yen(cost);
+    document.getElementById('cost-total').textContent = yen(costWithShipping);
     document.getElementById('selling-display').textContent = yen(sellingBefore);
 
     const profitEl = document.getElementById('profit-amount');
@@ -445,7 +447,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 特別値引きボックス（値引き後）
     const sellingAfter = sellingBefore - discountEx;
-    const profitAfter = sellingAfter - cost;
+    const profitAfter = sellingAfter - costWithShipping;
     const rateAfter = sellingAfter > 0 ? (profitAfter / sellingAfter * 100) : 0;
 
     document.getElementById('discount-selling-display').textContent = yen(sellingAfter);
