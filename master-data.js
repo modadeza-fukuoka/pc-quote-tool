@@ -4,14 +4,22 @@
 // ========================================
 
 const SHEET_ID = '1NDLxP6WXsxVVcZvWdoGM-o7TV_PexJHJHNu_peja0bI';
-const GID = '1024358522';
-const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+const GAMING_GID = '1024358522';
+const SLIM_GID   = '1943617209';
+
+// Use gviz endpoint (more reliable — returns calculated values)
+function sheetURL(gid) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+}
 
 // Global master data (populated on load)
 let MASTER = {
   cpu: [], cooler: [], motherboard: [], memory: [], gpu: [],
   ssd: [], case: [], caseFan: [], psu: [], extra: [],
 };
+
+// Slim master data — array of preset models
+let MASTER_SLIM = [];  // [{ model, cpu, cooler, mb, memory, gpu, ssd, case, fan, psu, extra, os, prices:{}, display:{} }]
 
 // ========================================
 // Compatibility Rules
@@ -227,13 +235,26 @@ function getAutoOtherInfo(mbName, caseName) {
   return parts.join('\n');
 }
 
+// Fetch with retry (Google Sheets sometimes returns "読み込んでいます..." on first try)
+async function fetchCSVWithRetry(url, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+    const text = await res.text();
+    // Check if it's a loading placeholder or error
+    if (text.includes('読み込んでいます') || text.trim() === '#REF!' || text.trim().length < 20) {
+      console.warn(`Attempt ${attempt + 1}: Sheet still loading, retrying...`);
+      await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); // Wait 2s, 4s, 6s
+      continue;
+    }
+    return text;
+  }
+  throw new Error('Sheet data not ready after retries');
+}
+
 async function fetchMasterData() {
   try {
-    const res = await fetch(SHEET_CSV_URL);
-    if (!res.ok) throw new Error('Fetch failed');
-
-    // Handle redirect - Google Sheets may redirect
-    const text = await res.text();
+    const text = await fetchCSVWithRetry(sheetURL(GAMING_GID));
     const rows = parseCSV(text);
 
     if (rows.length < 2) throw new Error('No data');
@@ -287,13 +308,73 @@ async function fetchMasterData() {
 }
 
 // ========================================
+// 【スリム】マスタ管理 — Fetch preset models
+// ========================================
+
+async function fetchSlimData() {
+  MASTER_SLIM = [];
+  try {
+    const text = await fetchCSVWithRetry(sheetURL(SLIM_GID));
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error('No slim data');
+
+    // Slim columns (offset by 1 from gaming due to model name in col 0):
+    // [0]=モデル名, [1]=CPU名, [2]=仕入価格, [3]=AIO名, [4]=仕入価格,
+    // [5]=MB名, [6]=仕入価格, [7]=メモリ名, [8]=仕入価格,
+    // [9]=GPU名, [10]=仕入価格, [11]=SSD名, [12]=仕入価格,
+    // [13]=ケース名, [14]=仕入価格, [15]=ファン名, [16]=仕入価格,
+    // [17]=電源名, [18]=仕入価格, [19]=追加パーツ, [20]=仕入価格,
+    // [21]=OS, [22]=仕入価格(OS)
+    // Display: [23]=CPU, [24]=クーラー, [25]=MB, [26]=メモリ,
+    // [27]=GPU, [28]=SSD, [29]=ケース(サイズ), [30]=ファン,
+    // [31]=電源, [32]=その他, [33]=USB
+
+    for (let i = 1; i < rows.length; i++) {
+      const model = (rows[i][0] || '').trim();
+      if (!model) continue;
+
+      const p = (col) => parsePrice(rows[i][col]);
+      const s = (col) => (rows[i][col] || '').trim();
+
+      MASTER_SLIM.push({
+        model,
+        parts: {
+          cpu:    s(1), cooler: s(3), motherboard: s(5), memory: s(7),
+          gpu:    s(9), ssd:    s(11), case: s(13), caseFan: s(15),
+          psu:    s(17), extra:  s(19), os: s(21),
+        },
+        prices: {
+          cpu: p(2), cooler: p(4), motherboard: p(6), memory: p(8),
+          gpu: p(10), ssd: p(12), case: p(14), caseFan: p(16),
+          psu: p(18), extra: p(20), os: p(22),
+        },
+        display: {
+          cpu: s(23), cooler: s(24), motherboard: s(25), memory: s(26),
+          gpu: s(27), ssd: s(28), case: s(29), caseFan: s(30),
+          psu: s(31),
+        },
+        otherInfo: s(32),
+        usbInfo: rows[i][33] ? (rows[i][33] || '').trim() : '',
+        totalCost: p(2) + p(4) + p(6) + p(8) + p(10) + p(12) + p(14) + p(16) + p(18) + p(20) + p(22),
+      });
+    }
+
+    console.log(`Loaded ${MASTER_SLIM.length} slim models`);
+    return true;
+  } catch (err) {
+    console.warn('Failed to fetch slim data:', err);
+    return false;
+  }
+}
+
+// ========================================
 // おすすめ構成 — Fetch from separate sheet
 // ========================================
 
 // Set this GID after creating the "おすすめ構成" sheet
 const RECOMMEND_GID = '0'; // TODO: replace with actual GID
 
-const RECOMMEND_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${RECOMMEND_GID}`;
+const RECOMMEND_CSV_URL = sheetURL(RECOMMEND_GID);
 
 // Fallback test data (used when sheet doesn't exist yet)
 const FALLBACK_RECOMMENDATIONS = [

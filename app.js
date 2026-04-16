@@ -4,14 +4,19 @@
 // ========================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-  let pcType = 'desktop';
-  let extraParts = []; // Array of { id, selectEl, priceEl }
+  let pcType = 'desktop';   // 'desktop' or 'notebook'
+  let desktopSub = 'gaming'; // 'gaming' or 'slim'
   let extraIdCounter = 0;
+  let selectedSlimModel = null;
 
   const btnDesktop    = document.getElementById('btn-desktop');
   const btnNotebook   = document.getElementById('btn-notebook');
+  const btnGaming     = document.getElementById('btn-gaming');
+  const btnSlim       = document.getElementById('btn-slim');
   const step3Desktop  = document.getElementById('step3-desktop');
+  const step3Slim     = document.getElementById('step3-slim');
   const step3Notebook = document.getElementById('step3-notebook');
+  const desktopSubEl  = document.getElementById('desktop-subtype');
   const quotePaper    = document.getElementById('quote-paper');
   const partsList     = document.getElementById('parts-list');
   const loadingEl     = document.getElementById('loading-indicator');
@@ -39,6 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Fetch live data ---
   if (loadingEl) loadingEl.classList.remove('hidden');
   const fetched = await fetchMasterData();
+  await fetchSlimData();
   await fetchRecommendations();
   if (loadingEl) loadingEl.classList.add('hidden');
   if (fetched) {
@@ -203,17 +209,73 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // --- PC Type ---
+  // --- PC Type + Subtype ---
+  function updateVisibility() {
+    btnDesktop.classList.toggle('active', pcType === 'desktop');
+    btnNotebook.classList.toggle('active', pcType === 'notebook');
+    desktopSubEl.classList.toggle('hidden', pcType !== 'desktop');
+    step3Desktop.classList.toggle('hidden', !(pcType === 'desktop' && desktopSub === 'gaming'));
+    step3Slim.classList.toggle('hidden', !(pcType === 'desktop' && desktopSub === 'slim'));
+    step3Notebook.classList.toggle('hidden', pcType !== 'notebook');
+    btnGaming.classList.toggle('active', desktopSub === 'gaming');
+    btnSlim.classList.toggle('active', desktopSub === 'slim');
+  }
+
   function setPCType(type) {
     pcType = type;
-    btnDesktop.classList.toggle('active', type === 'desktop');
-    btnNotebook.classList.toggle('active', type === 'notebook');
-    step3Desktop.classList.toggle('hidden', type !== 'desktop');
-    step3Notebook.classList.toggle('hidden', type !== 'notebook');
+    updateVisibility();
     render();
   }
+
+  function setDesktopSub(sub) {
+    desktopSub = sub;
+    selectedSlimModel = null;
+    updateVisibility();
+    render();
+  }
+
   btnDesktop.addEventListener('click', () => setPCType('desktop'));
   btnNotebook.addEventListener('click', () => setPCType('notebook'));
+  btnGaming.addEventListener('click', () => setDesktopSub('gaming'));
+  btnSlim.addEventListener('click', () => setDesktopSub('slim'));
+
+  // --- Slim model selector ---
+  function buildSlimOptions() {
+    const sel = document.getElementById('slim-model-select');
+    sel.innerHTML = '<option value="">-- モデルを選択 --</option>';
+    MASTER_SLIM.forEach((m, i) => {
+      sel.innerHTML += `<option value="${i}">${m.model}　(¥${m.totalCost.toLocaleString()})</option>`;
+    });
+  }
+
+  document.getElementById('slim-model-select')?.addEventListener('change', (e) => {
+    const idx = e.target.value;
+    if (idx === '') { selectedSlimModel = null; }
+    else { selectedSlimModel = MASTER_SLIM[parseInt(idx)]; }
+
+    // Show spec preview
+    const preview = document.getElementById('slim-spec-preview');
+    if (selectedSlimModel) {
+      const m = selectedSlimModel;
+      preview.innerHTML = `
+        <table class="slim-spec-table">
+          <tr><td class="sl">CPU</td><td>${m.parts.cpu}</td></tr>
+          <tr><td class="sl">クーラー</td><td>${m.parts.cooler}</td></tr>
+          <tr><td class="sl">M/B</td><td>${m.parts.motherboard}</td></tr>
+          <tr><td class="sl">メモリ</td><td>${m.parts.memory}</td></tr>
+          <tr><td class="sl">GPU</td><td>${m.parts.gpu || 'なし'}</td></tr>
+          <tr><td class="sl">SSD</td><td>${m.parts.ssd}</td></tr>
+          <tr><td class="sl">ケース</td><td>${m.parts.case}</td></tr>
+          <tr><td class="sl">電源</td><td>${m.parts.psu}</td></tr>
+          <tr><td class="sl">OS</td><td>${m.parts.os}</td></tr>
+        </table>
+        <div class="slim-cost-display">原価合計: ¥${m.totalCost.toLocaleString()}</div>
+      `;
+    } else {
+      preview.innerHTML = '';
+    }
+    render();
+  });
 
   // --- Helpers ---
   function v(id) { return document.getElementById(id)?.value || ''; }
@@ -223,6 +285,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function calcPartsTotal() {
     if (pcType === 'notebook') return n('nb-cost');
+    if (pcType === 'desktop' && desktopSub === 'slim') {
+      return selectedSlimModel ? selectedSlimModel.totalCost : 0;
+    }
     return partDefs.reduce((s, d) => s + getPartInfo(d).price, 0) + getExtraTotal();
   }
 
@@ -391,13 +456,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Spec rows
     let specRows = '';
-    if (pcType === 'desktop') {
+    if (pcType === 'desktop' && desktopSub === 'slim' && selectedSlimModel) {
+      // Slim: use model display data
+      const m = selectedSlimModel;
+      const slimLabels = [
+        ['CPU', m.display.cpu || m.parts.cpu],
+        ['CPUクーラー', m.display.cooler || m.parts.cooler],
+        ['マザーボード', m.display.motherboard || m.parts.motherboard],
+        ['メモリ', m.display.memory || m.parts.memory],
+        ['GPU', m.display.gpu || m.parts.gpu || '搭載なし'],
+        ['SSD', m.display.ssd || m.parts.ssd],
+        ['ケース', m.display.case || m.parts.case],
+        ['電源', m.display.psu || m.parts.psu],
+        ['OS', m.parts.os],
+        ['追加パーツ', m.parts.extra || ''],
+      ];
+      slimLabels.forEach(([label, val]) => {
+        specRows += `<tr><td class="sl">${label}</td><td class="sv">${val}</td></tr>`;
+      });
+      const slimOther = [m.otherInfo, m.usbInfo].filter(Boolean).join('\n');
+      specRows += `<tr><td class="sl">その他</td><td class="sv other-cell">${(slimOther || otherInfo).replace(/\n/g, '<br>')}</td></tr>`;
+    } else if (pcType === 'desktop') {
+      // Gaming: individual parts
       partDefs.forEach(def => {
         const info = getPartInfo(def);
         const displayName = getDisplayName(def.key, info.name);
         specRows += `<tr><td class="sl">${def.quoteLabel}</td><td class="sv">${displayName}</td></tr>`;
       });
-      // Extra parts rows
       const extras = getExtraParts();
       if (extras.length > 0) {
         extras.forEach((ex, i) => {
@@ -414,7 +499,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       specRows += `<tr><td class="sl">その他</td><td class="sv other-cell">${otherInfo.replace(/\n/g, '<br>')}</td></tr>`;
     }
 
-    const pcLabel = pcType === 'desktop' ? 'デスクトップPC本体' : 'ノートPC本体';
+    const pcLabel = pcType === 'notebook' ? 'ノートPC本体'
+      : desktopSub === 'slim' ? 'スリムPC本体'
+      : 'デスクトップPC本体';
 
     quotePaper.innerHTML = `<div class="q">
       <div class="q-logo"><img src="logo.png" alt="MDL.make" class="q-logo-img" onerror="this.parentElement.innerHTML='<span style=&quot;font-size:16px;font-weight:800;&quot;>MDL.make</span>'"></div>
@@ -549,10 +636,16 @@ ${printCSS}
     document.getElementById('extra-parts-list').innerHTML = '';
     document.getElementById('ai-results').classList.add('hidden');
     document.getElementById('ai-prompt').value = '';
+    document.getElementById('slim-model-select').selectedIndex = 0;
+    document.getElementById('slim-spec-preview').innerHTML = '';
+    selectedSlimModel = null;
+    desktopSub = 'gaming';
     buildPartRows(); setPCType('desktop');
   });
 
   // --- Init ---
   buildPartRows();
+  buildSlimOptions();
+  updateVisibility();
   render();
 });

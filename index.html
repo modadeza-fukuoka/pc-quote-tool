@@ -44,6 +44,13 @@
               <span>ノートPC</span>
             </button>
           </div>
+          <!-- Desktop sub-type: Gaming / Slim -->
+          <div class="desktop-subtype" id="desktop-subtype">
+            <div class="subtype-selector">
+              <button class="subtype-btn active" data-subtype="gaming" id="btn-gaming">ゲーミング</button>
+              <button class="subtype-btn" data-subtype="slim" id="btn-slim">スリム</button>
+            </div>
+          </div>
         </section>
 
         <!-- 2. Customer -->
@@ -82,22 +89,36 @@
           </div>
         </section>
 
-        <!-- 3. Desktop Parts (select from master) -->
+        <!-- 3a. Gaming: パーツ個別選択 -->
         <section class="form-section" id="step3-desktop">
           <div class="form-section-header">
             <span class="step-badge">3</span>
             <h2 class="form-section-title">パーツ構成</h2>
           </div>
-          <div class="parts-list" id="parts-list">
-            <!-- Populated by JS from master data -->
-          </div>
-          <!-- Extra parts: multiple -->
+          <div class="parts-list" id="parts-list"></div>
           <div class="extra-parts-section">
             <div class="extra-parts-header">
               <span class="form-section-title" style="font-size:12px;">追加パーツ</span>
               <button class="btn-add-extra" id="btn-add-extra">+ 追加</button>
             </div>
             <div id="extra-parts-list"></div>
+          </div>
+        </section>
+
+        <!-- 3b. Slim: モデル選択 -->
+        <section class="form-section hidden" id="step3-slim">
+          <div class="form-section-header">
+            <span class="step-badge">3</span>
+            <h2 class="form-section-title">モデル選択</h2>
+          </div>
+          <div class="form-field">
+            <label>スリムPCモデル</label>
+            <select id="slim-model-select" class="input select">
+              <option value="">-- モデルを選択 --</option>
+            </select>
+          </div>
+          <div class="slim-spec-preview" id="slim-spec-preview">
+            <!-- モデル選択後にスペック概要を表示 -->
           </div>
         </section>
 

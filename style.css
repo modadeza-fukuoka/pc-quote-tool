@@ -90,6 +90,33 @@ body {
 .type-card:hover { border-color: var(--border); }
 .type-card.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 
+/* Desktop subtype selector */
+.desktop-subtype { margin-top: 10px; }
+.subtype-selector {
+  display: flex; gap: 0; background: #f0f0f5; border-radius: 8px; padding: 3px;
+}
+.subtype-btn {
+  flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 600; font-family: inherit;
+  border: none; border-radius: 6px; background: transparent; color: var(--text-sub);
+  cursor: pointer; transition: all var(--transition); text-align: center;
+}
+.subtype-btn.active { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* Slim spec preview */
+.slim-spec-preview {
+  margin-top: 12px; font-size: 12px;
+}
+.slim-spec-table {
+  width: 100%; border-collapse: collapse; font-size: 11px;
+}
+.slim-spec-table td {
+  padding: 4px 8px; border-bottom: 1px solid var(--border-light);
+}
+.slim-spec-table .sl { font-weight: 600; color: var(--text-sub); width: 80px; }
+.slim-cost-display {
+  margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--accent);
+}
+
 .form-grid { display: flex; flex-direction: column; gap: 10px; }
 .form-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-sub); margin-bottom: 4px; letter-spacing: 0.04em; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
