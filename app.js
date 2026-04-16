@@ -415,39 +415,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Profit Calculation ---
   function updateProfit() {
-    const costUnit = calcPartsTotal();
-    const profitInput = n('profit-input');
+    const costUnitRaw = calcPartsTotal();
+    const costUnitExTax = Math.round(costUnitRaw / 1.1);
+    const profitInput = n('profit-input');                        // 利益額（手入力）
     const qty = Math.max(1, Math.round(n('pc-qty'))) || 1;
-    const costRaw = costUnit * qty;                      // 原価合計（税込）
-    const cost = Math.round(costRaw / 1.1);              // 原価合計（税抜）
-    const pcBody = (costUnit + profitInput) * qty;      // PC本体価格（原価+利益）
     const shippingUnit = n('shipping-fee');
     const shippingQty = parseInt(document.getElementById('shipping-qty')?.value) || 1;
     const shipping = shippingUnit * shippingQty;
     const discountEx = n('discount-value');
 
-    // 利益管理（値引き前）
-    // 原価 = パーツ原価（税抜）+ 送料
-    const costWithShipping = cost + shipping;
-    // 販売金額（税抜）= 原価 + 送料 + 利益
-    const sellingBefore = costWithShipping + (profitInput * qty);
-    const profitBefore = sellingBefore - costWithShipping;
-    const rateBefore = sellingBefore > 0 ? (profitBefore / sellingBefore * 100) : 0;
+    // 原価合計（税抜）= パーツ原価（税抜）× 数量 + 送料
+    const costTotal = (costUnitExTax * qty) + shipping;
+    // 販売金額（税抜）= 原価合計 + 利益額
+    const sellingBefore = costTotal + profitInput;
+    // 利益率
+    const rateBefore = sellingBefore > 0 ? (profitInput / sellingBefore * 100) : 0;
 
-    document.getElementById('cost-total').textContent = yen(costWithShipping);
+    document.getElementById('cost-total').textContent = yen(costTotal);
     document.getElementById('selling-display').textContent = yen(sellingBefore);
 
     const profitEl = document.getElementById('profit-amount');
-    profitEl.textContent = yen(profitBefore);
-    profitEl.className = 'profit-value ' + (profitBefore >= 0 ? 'positive' : 'negative');
+    profitEl.textContent = yen(profitInput);
+    profitEl.className = 'profit-value ' + (profitInput >= 0 ? 'positive' : 'negative');
 
     const rateEl = document.getElementById('profit-rate');
     rateEl.textContent = rateBefore.toFixed(1) + '%';
-    rateEl.className = 'profit-value ' + (profitBefore >= 0 ? 'positive' : 'negative');
+    rateEl.className = 'profit-value ' + (profitInput >= 0 ? 'positive' : 'negative');
 
     // 特別値引きボックス（値引き後）
     const sellingAfter = sellingBefore - discountEx;
-    const profitAfter = sellingAfter - costWithShipping;
+    const profitAfter = profitInput - discountEx;
     const rateAfter = sellingAfter > 0 ? (profitAfter / sellingAfter * 100) : 0;
 
     document.getElementById('discount-selling-display').textContent = yen(sellingAfter);
@@ -539,11 +536,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Render ---
   function render() {
     const customer = v('customer-name');
-    const costUnit = calcPartsTotal();             // 1台あたり原価
-    const profitInput = n('profit-input');          // 利益額
-    const pcUnit = costUnit + profitInput;          // 1台あたり販売単価（原価+利益）
+    const costUnitRaw = calcPartsTotal();                        // 1台あたりパーツ原価（税込）
+    const costUnitExTax = Math.round(costUnitRaw / 1.1);         // 1台あたりパーツ原価（税抜）
+    const profitInput = n('profit-input');                        // 利益額（手入力）
+    const pcUnit = costUnitExTax + profitInput;                   // 1台あたり販売単価（税抜）
     const qty = Math.max(1, Math.round(n('pc-qty'))) || 1;
-    const pcBody = pcUnit * qty;
+    const pcBody = pcUnit * qty;                                  // PC本体合計（税抜）
     const discountEx = n('discount-value');
     const shippingUnit = n('shipping-fee');
     const shippingQty = parseInt(document.getElementById('shipping-qty')?.value) || 1;
@@ -551,10 +549,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const otherInfo = v('other-info');
     const memo = v('memo');
 
-    const breakdownTotal = pcBody - discountEx + shipping;
-    const subtaxEx = pcBody + shipping;
-    const tax = Math.round((subtaxEx - discountEx) * 0.1);
-    const grandTotal = (subtaxEx - discountEx) + tax;
+    // すべて税抜きベース
+    const breakdownTotal = pcBody - discountEx + shipping;        // 合計金額（税抜）
+    const subtaxEx = pcBody + shipping;                           // 小計（税抜）
+    const tax = Math.round((subtaxEx - discountEx) * 0.1);       // 消費税
+    const grandTotal = (subtaxEx - discountEx) + tax;             // 合計金額（税込）
 
     // Spec rows
     let specRows = '';
