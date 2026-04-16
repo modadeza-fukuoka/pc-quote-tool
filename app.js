@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const items = getItemsForKey(key);
     let html = '<option value="">-- 選択 --</option>';
     items.forEach(item => {
-      html += `<option value="${item.name}" data-price="${item.price}">${item.name}　(¥${item.price.toLocaleString()})</option>`;
+      html += `<option value="${item.name}" data-price="${item.price}">${item.name}</option>`;
     });
     html += '<option value="__custom__">手動入力</option>';
     return html;
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const items = MASTER.extra || [];
     let html = '<option value="">-- 選択 --</option>';
     items.forEach(item => {
-      html += `<option value="${item.name}" data-price="${item.price}">${item.name}　(¥${item.price.toLocaleString()})</option>`;
+      html += `<option value="${item.name}" data-price="${item.price}">${item.name}</option>`;
     });
     html += '<option value="__custom__">手動入力</option>';
     return html;
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const items = MASTER_SLIM[key] || [];
     let html = '<option value="">-- 選択 --</option>';
     items.forEach(item => {
-      html += `<option value="${item.name}" data-price="${item.price}">${item.name}　(¥${item.price.toLocaleString()})</option>`;
+      html += `<option value="${item.name}" data-price="${item.price}">${item.name}</option>`;
     });
     html += '<option value="__custom__">手動入力</option>';
     return html;
