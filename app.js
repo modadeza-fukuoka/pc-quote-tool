@@ -425,7 +425,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const discountEx = n('discount-value');
 
     // 利益管理（値引き前）
-    const sellingBefore = pcBody + shipping;
+    // 販売金額（税抜）= 原価合計（税抜）+ 利益 + 送料
+    const sellingBefore = cost + (profitInput * qty) + shipping;
     const profitBefore = sellingBefore - cost;
     const rateBefore = sellingBefore > 0 ? (profitBefore / sellingBefore * 100) : 0;
 
@@ -441,7 +442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     rateEl.className = 'profit-value ' + (profitBefore >= 0 ? 'positive' : 'negative');
 
     // 特別値引きボックス（値引き後）
-    const sellingAfter = pcBody - discountEx + shipping;
+    const sellingAfter = sellingBefore - discountEx;
     const profitAfter = sellingAfter - cost;
     const rateAfter = sellingAfter > 0 ? (profitAfter / sellingAfter * 100) : 0;
 
