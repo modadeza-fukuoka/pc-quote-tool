@@ -421,7 +421,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const costRaw = costUnit * qty;                      // 原価合計（税込）
     const cost = Math.round(costRaw / 1.1);              // 原価合計（税抜）
     const pcBody = (costUnit + profitInput) * qty;      // PC本体価格（原価+利益）
-    const shipping = n('shipping-fee');
+    const shippingUnit = n('shipping-fee');
+    const shippingQty = parseInt(document.getElementById('shipping-qty')?.value) || 1;
+    const shipping = shippingUnit * shippingQty;
     const discountEx = n('discount-value');
 
     // 利益管理（値引き前）
@@ -541,7 +543,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const qty = Math.max(1, Math.round(n('pc-qty'))) || 1;
     const pcBody = pcUnit * qty;
     const discountEx = n('discount-value');
-    const shipping = n('shipping-fee');
+    const shippingUnit = n('shipping-fee');
+    const shippingQty = parseInt(document.getElementById('shipping-qty')?.value) || 1;
+    const shipping = shippingUnit * shippingQty;
     const otherInfo = v('other-info');
     const memo = v('memo');
 
@@ -619,7 +623,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <tr><td class="c-item">${pcLabel}</td><td class="c-qty">${qty}　台</td><td class="c-unit">${yen(pcUnit)}</td><td class="c-amt">${yen(pcBody)}</td></tr>
           <tr class="discount-row"><td class="c-item">特別値引き</td><td class="c-qty">${discountEx > 0 ? qty + '　台' : ''}</td><td class="c-unit">${discountEx > 0 ? yen(discountEx) : ''}</td><td class="c-amt">${discountEx > 0 ? yen(discountEx) : ''}</td></tr>
           <tr class="sep-row"><td></td><td></td><td></td><td></td></tr>
-          <tr><td class="c-item">送料</td><td class="c-qty">1　式</td><td class="c-unit">${yen(shipping)}</td><td class="c-amt">${yen(shipping)}</td></tr>
+          <tr><td class="c-item">送料</td><td class="c-qty">${shippingQty}　式</td><td class="c-unit">${yen(shippingUnit)}</td><td class="c-amt">${yen(shipping)}</td></tr>
           <tr class="sum-row"><td></td><td></td><td class="c-unit" style="font-weight:700;">合計</td><td class="c-amt" style="font-weight:700;">${yen(breakdownTotal)}</td></tr>
         </tbody>
       </table>
@@ -727,6 +731,7 @@ ${printCSS}
     document.getElementById('pc-qty').value = '1';
     document.getElementById('discount-value').value = '0';
     document.getElementById('shipping-fee').value = '2000';
+    document.getElementById('shipping-qty').value = '1';
     document.getElementById('extra-parts-list').innerHTML = '';
     document.getElementById('ai-results').classList.add('hidden');
     document.getElementById('ai-prompt').value = '';
