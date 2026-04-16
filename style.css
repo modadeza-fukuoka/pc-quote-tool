@@ -102,6 +102,15 @@ body {
 }
 .subtype-btn.active { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
+/* Slim model badge */
+.slim-model-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; margin-bottom: 10px;
+  background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px;
+}
+.model-match-label { font-size: 10px; color: #16a34a; font-weight: 600; }
+.model-match-name { font-size: 13px; color: #16a34a; font-weight: 700; }
+
 /* Slim spec preview */
 .slim-spec-preview {
   margin-top: 12px; font-size: 12px;

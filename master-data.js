@@ -18,8 +18,13 @@ let MASTER = {
   ssd: [], case: [], caseFan: [], psu: [], extra: [],
 };
 
-// Slim master data — array of preset models
-let MASTER_SLIM = [];  // [{ model, cpu, cooler, mb, memory, gpu, ssd, case, fan, psu, extra, os, prices:{}, display:{} }]
+// Slim master data
+let MASTER_SLIM = {
+  cpu: [], cooler: [], motherboard: [], memory: [], gpu: [],
+  ssd: [], case: [], caseFan: [], psu: [], os: [],
+  models: [],  // Full preset models for model-name matching
+};
+let SLIM_DISPLAY_MAP = {};
 
 // ========================================
 // Compatibility Rules
@@ -312,13 +317,14 @@ async function fetchMasterData() {
 // ========================================
 
 async function fetchSlimData() {
-  MASTER_SLIM = [];
+  MASTER_SLIM = { cpu:[], cooler:[], motherboard:[], memory:[], gpu:[], ssd:[], case:[], caseFan:[], psu:[], os:[], models:[] };
+  SLIM_DISPLAY_MAP = {};
   try {
     const text = await fetchCSVWithRetry(sheetURL(SLIM_GID));
     const rows = parseCSV(text);
     if (rows.length < 2) throw new Error('No slim data');
 
-    // Slim columns (offset by 1 from gaming due to model name in col 0):
+    // Slim columns:
     // [0]=モデル名, [1]=CPU名, [2]=仕入価格, [3]=AIO名, [4]=仕入価格,
     // [5]=MB名, [6]=仕入価格, [7]=メモリ名, [8]=仕入価格,
     // [9]=GPU名, [10]=仕入価格, [11]=SSD名, [12]=仕入価格,
@@ -329,42 +335,100 @@ async function fetchSlimData() {
     // [27]=GPU, [28]=SSD, [29]=ケース(サイズ), [30]=ファン,
     // [31]=電源, [32]=その他, [33]=USB
 
+    // Extract unique parts per category + build display maps
+    const cats = [
+      { key:'cpu',         nc:1,  pc:2,  dc:23 },
+      { key:'cooler',      nc:3,  pc:4,  dc:24 },
+      { key:'motherboard', nc:5,  pc:6,  dc:25, oc:32 },
+      { key:'memory',      nc:7,  pc:8,  dc:26 },
+      { key:'gpu',         nc:9,  pc:10, dc:27 },
+      { key:'ssd',         nc:11, pc:12, dc:28 },
+      { key:'case',        nc:13, pc:14, dc:29, oc:33 },
+      { key:'caseFan',     nc:15, pc:16, dc:30 },
+      { key:'psu',         nc:17, pc:18, dc:31 },
+      { key:'os',          nc:21, pc:22, dc:null },
+    ];
+
+    cats.forEach(cat => {
+      const seen = new Set();
+      SLIM_DISPLAY_MAP[cat.key] = {};
+      const otherMap = {};
+      for (let i = 1; i < rows.length; i++) {
+        const name = (rows[i][cat.nc] || '').trim();
+        const price = parsePrice(rows[i][cat.pc]);
+        if (!name) continue;
+        // Display name
+        if (cat.dc !== null) {
+          const disp = (rows[i][cat.dc] || '').trim();
+          if (disp && !disp.startsWith('見積書')) {
+            SLIM_DISPLAY_MAP[cat.key][name] = disp;
+          }
+        }
+        // Other info (MB→col32, Case→col33)
+        if (cat.oc) {
+          const other = (rows[i][cat.oc] || '').trim();
+          if (other && !other.startsWith('見積書')) {
+            if (!otherMap[name]) otherMap[name] = other;
+          }
+        }
+        if (!seen.has(name)) {
+          seen.add(name);
+          MASTER_SLIM[cat.key].push({ name, price, display: SLIM_DISPLAY_MAP[cat.key][name] || '', otherInfo: '' });
+        }
+      }
+      // Attach otherInfo
+      MASTER_SLIM[cat.key].forEach(item => { item.otherInfo = otherMap[item.name] || ''; });
+    });
+
+    // Slim: keep all items (including price 0 like 不要/搭載なし/350W/OS)
+
+    // Store full models for model-name matching
     for (let i = 1; i < rows.length; i++) {
       const model = (rows[i][0] || '').trim();
       if (!model) continue;
-
-      const p = (col) => parsePrice(rows[i][col]);
       const s = (col) => (rows[i][col] || '').trim();
-
-      MASTER_SLIM.push({
+      const p = (col) => parsePrice(rows[i][col]);
+      MASTER_SLIM.models.push({
         model,
-        parts: {
-          cpu:    s(1), cooler: s(3), motherboard: s(5), memory: s(7),
-          gpu:    s(9), ssd:    s(11), case: s(13), caseFan: s(15),
-          psu:    s(17), extra:  s(19), os: s(21),
-        },
-        prices: {
-          cpu: p(2), cooler: p(4), motherboard: p(6), memory: p(8),
-          gpu: p(10), ssd: p(12), case: p(14), caseFan: p(16),
-          psu: p(18), extra: p(20), os: p(22),
-        },
-        display: {
-          cpu: s(23), cooler: s(24), motherboard: s(25), memory: s(26),
-          gpu: s(27), ssd: s(28), case: s(29), caseFan: s(30),
-          psu: s(31),
-        },
-        otherInfo: s(32),
-        usbInfo: rows[i][33] ? (rows[i][33] || '').trim() : '',
-        totalCost: p(2) + p(4) + p(6) + p(8) + p(10) + p(12) + p(14) + p(16) + p(18) + p(20) + p(22),
+        parts: { cpu:s(1), cooler:s(3), motherboard:s(5), memory:s(7), gpu:s(9), ssd:s(11), case:s(13), caseFan:s(15), psu:s(17), os:s(21) },
+        totalCost: p(2)+p(4)+p(6)+p(8)+p(10)+p(12)+p(14)+p(16)+p(18)+p(20)+p(22),
       });
     }
 
-    console.log(`Loaded ${MASTER_SLIM.length} slim models`);
+    console.log(`Loaded slim parts: CPU=${MASTER_SLIM.cpu.length}, models=${MASTER_SLIM.models.length}`);
     return true;
   } catch (err) {
     console.warn('Failed to fetch slim data:', err);
     return false;
   }
+}
+
+// Get slim display name
+function getSlimDisplayName(partKey, internalName) {
+  if (!internalName) return '';
+  return (SLIM_DISPLAY_MAP[partKey] && SLIM_DISPLAY_MAP[partKey][internalName]) || internalName;
+}
+
+// Get slim "その他" info from MB + Case
+function getSlimAutoOtherInfo(mbName, caseName) {
+  let parts = [];
+  const mb = (MASTER_SLIM.motherboard || []).find(m => m.name === mbName);
+  if (mb?.otherInfo) parts.push(mb.otherInfo);
+  const c = (MASTER_SLIM.case || []).find(m => m.name === caseName);
+  if (c?.otherInfo) parts.push(c.otherInfo);
+  return parts.join('\n');
+}
+
+// Match current slim parts to a model name
+function matchSlimModel(partSelections) {
+  for (const m of MASTER_SLIM.models) {
+    const match = Object.keys(m.parts).every(key => {
+      if (!m.parts[key] && !partSelections[key]) return true;
+      return m.parts[key] === partSelections[key];
+    });
+    if (match) return m.model;
+  }
+  return null;
 }
 
 // ========================================

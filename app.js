@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let pcType = 'desktop';   // 'desktop' or 'notebook'
   let desktopSub = 'gaming'; // 'gaming' or 'slim'
   let extraIdCounter = 0;
-  let selectedSlimModel = null;
+  // (slim model is auto-detected from part selections)
 
   const btnDesktop    = document.getElementById('btn-desktop');
   const btnNotebook   = document.getElementById('btn-notebook');
@@ -229,7 +229,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function setDesktopSub(sub) {
     desktopSub = sub;
-    selectedSlimModel = null;
     updateVisibility();
     render();
   }
@@ -239,43 +238,138 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnGaming.addEventListener('click', () => setDesktopSub('gaming'));
   btnSlim.addEventListener('click', () => setDesktopSub('slim'));
 
-  // --- Slim model selector ---
-  function buildSlimOptions() {
-    const sel = document.getElementById('slim-model-select');
-    sel.innerHTML = '<option value="">-- モデルを選択 --</option>';
-    MASTER_SLIM.forEach((m, i) => {
-      sel.innerHTML += `<option value="${i}">${m.model}　(¥${m.totalCost.toLocaleString()})</option>`;
+  // --- Slim parts (same approach as gaming but using MASTER_SLIM data) ---
+  const slimPartDefs = [
+    { key: 'cpu',         badge: 'CPU',    quoteLabel: 'CPU' },
+    { key: 'cooler',      badge: 'クーラー', quoteLabel: 'CPUクーラー' },
+    { key: 'motherboard', badge: 'M/B',    quoteLabel: 'マザーボード' },
+    { key: 'memory',      badge: 'メモリ',  quoteLabel: 'メモリ' },
+    { key: 'gpu',         badge: 'GPU',    quoteLabel: 'GPU' },
+    { key: 'ssd',         badge: 'SSD',    quoteLabel: 'SSD' },
+    { key: 'case',        badge: 'ケース',  quoteLabel: 'ケース' },
+    { key: 'caseFan',     badge: 'ファン',  quoteLabel: 'ケースファン' },
+    { key: 'psu',         badge: '電源',   quoteLabel: '電源' },
+    { key: 'os',          badge: 'OS',     quoteLabel: 'OS' },
+  ];
+
+  function buildSlimSelectOptions(key) {
+    const items = MASTER_SLIM[key] || [];
+    let html = '<option value="">-- 選択 --</option>';
+    items.forEach(item => {
+      html += `<option value="${item.name}" data-price="${item.price}">${item.name}　(¥${item.price.toLocaleString()})</option>`;
+    });
+    html += '<option value="__custom__">手動入力</option>';
+    return html;
+  }
+
+  function buildSlimPartRows() {
+    const list = document.getElementById('slim-parts-list');
+    list.innerHTML = '';
+    slimPartDefs.forEach(def => {
+      const row = document.createElement('div');
+      row.className = 'part-row';
+      row.innerHTML = `
+        <div class="part-badge">${def.badge}</div>
+        <div class="part-select-wrap">
+          <select id="slim-${def.key}-select" class="input select part-select">${buildSlimSelectOptions(def.key)}</select>
+          <div class="part-custom hidden" id="slim-${def.key}-custom-wrap">
+            <input type="text" id="slim-${def.key}-name" class="input" placeholder="パーツ名">
+            <input type="number" id="slim-${def.key}-price" class="input input-price" placeholder="¥ 金額">
+          </div>
+        </div>
+        <div class="part-price-display" id="slim-${def.key}-price-display"></div>
+      `;
+      list.appendChild(row);
+
+      const select = row.querySelector('select');
+      select.addEventListener('change', () => {
+        const val = select.value;
+        const cw = row.querySelector('.part-custom');
+        const pd = row.querySelector('.part-price-display');
+        if (val === '__custom__') { cw.classList.remove('hidden'); pd.textContent = ''; }
+        else if (val) { cw.classList.add('hidden'); pd.textContent = '¥' + (parseInt(select.selectedOptions[0]?.dataset.price) || 0).toLocaleString(); }
+        else { cw.classList.add('hidden'); pd.textContent = ''; }
+        updateSlimModelMatch();
+        updateSlimAutoOther();
+        render();
+      });
+      row.querySelectorAll('.part-custom input').forEach(el => el.addEventListener('input', render));
     });
   }
 
-  document.getElementById('slim-model-select')?.addEventListener('change', (e) => {
-    const idx = e.target.value;
-    if (idx === '') { selectedSlimModel = null; }
-    else { selectedSlimModel = MASTER_SLIM[parseInt(idx)]; }
+  function getSlimPartInfo(def) {
+    const sel = document.getElementById('slim-' + def.key + '-select');
+    if (!sel) return { name: '', price: 0 };
+    if (sel.value === '__custom__') return { name: document.getElementById('slim-' + def.key + '-name')?.value || '', price: parseFloat(document.getElementById('slim-' + def.key + '-price')?.value) || 0 };
+    if (sel.value) return { name: sel.value, price: parseInt(sel.selectedOptions[0]?.dataset.price) || 0 };
+    return { name: '', price: 0 };
+  }
 
-    // Show spec preview
-    const preview = document.getElementById('slim-spec-preview');
-    if (selectedSlimModel) {
-      const m = selectedSlimModel;
-      preview.innerHTML = `
-        <table class="slim-spec-table">
-          <tr><td class="sl">CPU</td><td>${m.parts.cpu}</td></tr>
-          <tr><td class="sl">クーラー</td><td>${m.parts.cooler}</td></tr>
-          <tr><td class="sl">M/B</td><td>${m.parts.motherboard}</td></tr>
-          <tr><td class="sl">メモリ</td><td>${m.parts.memory}</td></tr>
-          <tr><td class="sl">GPU</td><td>${m.parts.gpu || 'なし'}</td></tr>
-          <tr><td class="sl">SSD</td><td>${m.parts.ssd}</td></tr>
-          <tr><td class="sl">ケース</td><td>${m.parts.case}</td></tr>
-          <tr><td class="sl">電源</td><td>${m.parts.psu}</td></tr>
-          <tr><td class="sl">OS</td><td>${m.parts.os}</td></tr>
-        </table>
-        <div class="slim-cost-display">原価合計: ¥${m.totalCost.toLocaleString()}</div>
-      `;
+  function calcSlimPartsTotal() {
+    return slimPartDefs.reduce((s, d) => s + getSlimPartInfo(d).price, 0) + getSlimExtraTotal();
+  }
+
+  // Slim extra parts
+  function addSlimExtraPart() {
+    const id = 'slim-extra-' + (extraIdCounter++);
+    const container = document.getElementById('slim-extra-parts-list');
+    const row = document.createElement('div');
+    row.className = 'extra-row';
+    row.innerHTML = `
+      <select class="input select extra-select" data-id="${id}"><option value="">-- 選択 --</option><option value="__custom__">手動入力</option></select>
+      <input type="number" class="input input-price extra-price" data-id="${id}" placeholder="¥">
+      <button class="btn-remove-extra" data-id="${id}" title="削除">×</button>
+    `;
+    container.appendChild(row);
+    const sel = row.querySelector('select');
+    const priceInput = row.querySelector('.extra-price');
+    sel.addEventListener('change', () => { render(); });
+    priceInput.addEventListener('input', render);
+    row.querySelector('.btn-remove-extra').addEventListener('click', () => { row.remove(); render(); });
+  }
+
+  function getSlimExtraParts() {
+    const rows = document.querySelectorAll('#slim-extra-parts-list .extra-row');
+    const result = [];
+    rows.forEach(row => {
+      const sel = row.querySelector('select');
+      const pi = row.querySelector('.extra-price');
+      if (sel.value === '__custom__' || pi.value) result.push({ name: '', price: parseFloat(pi.value) || 0 });
+      else if (sel.value) result.push({ name: sel.value, price: parseFloat(pi.value) || 0 });
+    });
+    return result;
+  }
+
+  function getSlimExtraTotal() {
+    return getSlimExtraParts().reduce((s, p) => s + p.price, 0);
+  }
+
+  document.getElementById('btn-add-slim-extra')?.addEventListener('click', () => addSlimExtraPart());
+
+  // Auto-detect model name from current slim part selections
+  function updateSlimModelMatch() {
+    const selections = {};
+    slimPartDefs.forEach(def => { selections[def.key] = getSlimPartInfo(def).name; });
+    const modelName = matchSlimModel(selections);
+    const badge = document.getElementById('slim-model-badge');
+    const nameEl = document.getElementById('slim-model-name');
+    if (modelName) {
+      badge.classList.remove('hidden');
+      nameEl.textContent = modelName;
     } else {
-      preview.innerHTML = '';
+      badge.classList.add('hidden');
+      nameEl.textContent = '';
     }
-    render();
-  });
+  }
+
+  // Auto-fill "その他" for slim
+  function updateSlimAutoOther() {
+    const mbInfo = getSlimPartInfo(slimPartDefs.find(d => d.key === 'motherboard'));
+    const caseInfo = getSlimPartInfo(slimPartDefs.find(d => d.key === 'case'));
+    const autoText = getSlimAutoOtherInfo(mbInfo.name, caseInfo.name);
+    const textarea = document.getElementById('other-info');
+    if (textarea && autoText) textarea.value = autoText;
+  }
 
   // --- Helpers ---
   function v(id) { return document.getElementById(id)?.value || ''; }
@@ -286,7 +380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function calcPartsTotal() {
     if (pcType === 'notebook') return n('nb-cost');
     if (pcType === 'desktop' && desktopSub === 'slim') {
-      return selectedSlimModel ? selectedSlimModel.totalCost : 0;
+      return calcSlimPartsTotal();
     }
     return partDefs.reduce((s, d) => s + getPartInfo(d).price, 0) + getExtraTotal();
   }
@@ -456,26 +550,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Spec rows
     let specRows = '';
-    if (pcType === 'desktop' && desktopSub === 'slim' && selectedSlimModel) {
-      // Slim: use model display data
-      const m = selectedSlimModel;
-      const slimLabels = [
-        ['CPU', m.display.cpu || m.parts.cpu],
-        ['CPUクーラー', m.display.cooler || m.parts.cooler],
-        ['マザーボード', m.display.motherboard || m.parts.motherboard],
-        ['メモリ', m.display.memory || m.parts.memory],
-        ['GPU', m.display.gpu || m.parts.gpu || '搭載なし'],
-        ['SSD', m.display.ssd || m.parts.ssd],
-        ['ケース', m.display.case || m.parts.case],
-        ['電源', m.display.psu || m.parts.psu],
-        ['OS', m.parts.os],
-        ['追加パーツ', m.parts.extra || ''],
-      ];
-      slimLabels.forEach(([label, val]) => {
-        specRows += `<tr><td class="sl">${label}</td><td class="sv">${val}</td></tr>`;
+    if (pcType === 'desktop' && desktopSub === 'slim') {
+      // Slim: パーツ個別選択 with display names from X列以降
+      slimPartDefs.forEach(def => {
+        const info = getSlimPartInfo(def);
+        const displayName = getSlimDisplayName(def.key, info.name);
+        specRows += `<tr><td class="sl">${def.quoteLabel}</td><td class="sv">${displayName}</td></tr>`;
       });
-      const slimOther = [m.otherInfo, m.usbInfo].filter(Boolean).join('\n');
-      specRows += `<tr><td class="sl">その他</td><td class="sv other-cell">${(slimOther || otherInfo).replace(/\n/g, '<br>')}</td></tr>`;
+      // Extra parts
+      const slimExtras = getSlimExtraParts();
+      if (slimExtras.length > 0) {
+        slimExtras.forEach((ex, i) => {
+          specRows += `<tr><td class="sl">${i === 0 ? '追加パーツ' : ''}</td><td class="sv">${ex.name}</td></tr>`;
+        });
+      } else {
+        specRows += `<tr><td class="sl">追加パーツ</td><td class="sv"></td></tr>`;
+      }
+      specRows += `<tr><td class="sl">その他</td><td class="sv other-cell">${otherInfo.replace(/\n/g, '<br>')}</td></tr>`;
     } else if (pcType === 'desktop') {
       // Gaming: individual parts
       partDefs.forEach(def => {
@@ -556,7 +647,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loadingEl) loadingEl.classList.remove('hidden');
     const ok = await fetchMasterData();
     if (loadingEl) loadingEl.classList.add('hidden');
-    if (ok) { buildPartRows(); render(); document.getElementById('data-status').textContent = '再取得済み (' + new Date().toLocaleTimeString() + ')'; }
+    await fetchSlimData();
+    if (ok) { buildPartRows(); buildSlimPartRows(); render(); document.getElementById('data-status').textContent = '再取得済み (' + new Date().toLocaleTimeString() + ')'; }
   });
 
   document.getElementById('btn-print').addEventListener('click', () => {
@@ -636,16 +728,15 @@ ${printCSS}
     document.getElementById('extra-parts-list').innerHTML = '';
     document.getElementById('ai-results').classList.add('hidden');
     document.getElementById('ai-prompt').value = '';
-    document.getElementById('slim-model-select').selectedIndex = 0;
-    document.getElementById('slim-spec-preview').innerHTML = '';
-    selectedSlimModel = null;
+    document.getElementById('slim-extra-parts-list').innerHTML = '';
+    document.getElementById('slim-model-badge')?.classList.add('hidden');
     desktopSub = 'gaming';
     buildPartRows(); setPCType('desktop');
   });
 
   // --- Init ---
   buildPartRows();
-  buildSlimOptions();
+  buildSlimPartRows();
   updateVisibility();
   render();
 });

@@ -105,20 +105,23 @@
           </div>
         </section>
 
-        <!-- 3b. Slim: モデル選択 -->
+        <!-- 3b. Slim: パーツ個別選択 -->
         <section class="form-section hidden" id="step3-slim">
           <div class="form-section-header">
             <span class="step-badge">3</span>
-            <h2 class="form-section-title">モデル選択</h2>
+            <h2 class="form-section-title">パーツ構成（スリム）</h2>
           </div>
-          <div class="form-field">
-            <label>スリムPCモデル</label>
-            <select id="slim-model-select" class="input select">
-              <option value="">-- モデルを選択 --</option>
-            </select>
+          <div class="slim-model-badge hidden" id="slim-model-badge">
+            <span class="model-match-label">該当モデル:</span>
+            <span class="model-match-name" id="slim-model-name"></span>
           </div>
-          <div class="slim-spec-preview" id="slim-spec-preview">
-            <!-- モデル選択後にスペック概要を表示 -->
+          <div class="parts-list" id="slim-parts-list"></div>
+          <div class="extra-parts-section">
+            <div class="extra-parts-header">
+              <span class="form-section-title" style="font-size:12px;">追加パーツ</span>
+              <button class="btn-add-extra" id="btn-add-slim-extra">+ 追加</button>
+            </div>
+            <div id="slim-extra-parts-list"></div>
           </div>
         </section>
 
