@@ -473,11 +473,67 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('btn-print').addEventListener('click', () => {
-    // タイトルを空にしてブラウザのヘッダー/フッター表示を抑制
-    const origTitle = document.title;
-    document.title = ' ';
-    window.print();
-    document.title = origTitle;
+    // iframe印刷でブラウザのヘッダー/フッターを回避
+    const quoteHTML = document.getElementById('quote-paper').innerHTML;
+    const printCSS = Array.from(document.styleSheets)
+      .map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).join('\n'); } catch(e) { return ''; } })
+      .join('\n');
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument;
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@page { size: A4 portrait; margin: 10mm; }
+html, body { margin: 0; padding: 0; background: #fff; }
+${printCSS}
+.quote-paper { box-shadow: none; width: 100%; min-height: auto; }
+.q { padding: 16px 24px; font-size: 10px; }
+.q-title { font-size: 22px; margin: 2px 0 12px; }
+.q-logo-img { height: 32px; }
+.q-customer-row { margin-top: 12px; }
+.q-customer-text, .q-sama { font-size: 13px; }
+.q-date { font-size: 11px; }
+.q-stamp-img { width: 64px; height: 64px; }
+.q-total-bar { margin: 8px 0 12px; padding: 6px 4px; }
+.q-total-amt { font-size: 22px; }
+.q-bd { margin-bottom: 8px; }
+.q-bd th { padding: 3px 6px; font-size: 9px; }
+.q-bd td { padding: 3px 6px; font-size: 10px; }
+.q-sp { margin-bottom: 8px; }
+.q-sp td { padding: 2px 6px; font-size: 9.5px; }
+.q-sp .sl { width: 80px; font-size: 9px; }
+.q-sp .other-cell { font-size: 8.5px; line-height: 1.6; min-height: auto; }
+.q-price-wrap { margin-bottom: 10px; }
+.q-ps { width: 240px; font-size: 10px; }
+.q-ps td { padding: 2px 8px; }
+.q-ps .grand-row td { font-size: 11px; padding: 4px 8px; }
+.q-notes { padding: 8px 10px; font-size: 8px; line-height: 1.7; }
+.q-notes b { font-size: 8.5px; }
+</style>
+</head><body>
+<div class="quote-paper">${quoteHTML}</div>
+</body></html>`);
+    doc.close();
+
+    iframe.contentWindow.onafterprint = () => {
+      document.body.removeChild(iframe);
+    };
+
+    // フォント読み込み待ちしてから印刷
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      // フォールバック: onafterprintが効かないブラウザ用
+      setTimeout(() => {
+        if (iframe.parentNode) document.body.removeChild(iframe);
+      }, 5000);
+    }, 500);
   });
 
   document.getElementById('btn-reset').addEventListener('click', () => {
