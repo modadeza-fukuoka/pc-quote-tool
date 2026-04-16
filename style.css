@@ -600,12 +600,61 @@ body {
 .hidden { display: none !important; }
 
 @media print {
-  body { background: #fff; }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  /* ヘッダー・フッター（日付・URL・ページ番号）を非表示 */
+  html, body {
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* タイトルバーを空にしてブラウザのヘッダー/フッターを消す */
+  title { display: none; }
+
   .panel-left, .preview-toolbar { display: none !important; }
   .app-layout { display: block; }
-  .panel-right { background: #fff; width: 100%; }
-  .preview-scroll { padding: 0; }
-  .quote-paper { box-shadow: none; width: 100%; min-height: auto; }
+  .panel-right { background: #fff; width: 100%; overflow: visible; }
+  .preview-scroll { padding: 0; overflow: visible; }
+
+  .quote-paper {
+    box-shadow: none;
+    width: 100%;
+    min-height: auto;
+    page-break-inside: avoid;
+  }
+
+  /* 1ページに収める */
+  .q {
+    padding: 16px 24px 16px;
+    font-size: 10px;
+  }
+  .q-title { font-size: 22px; margin: 2px 0 12px; }
+  .q-logo-img { height: 32px; }
+  .q-customer-row { margin-top: 12px; }
+  .q-customer-text, .q-sama { font-size: 13px; }
+  .q-date { font-size: 11px; }
+  .q-company-name { font-size: 12px; }
+  .q-company-info { font-size: 10px; }
+  .q-stamp-img { width: 64px; height: 64px; }
+  .q-total-bar { margin: 8px 0 12px; padding: 6px 4px; }
+  .q-total-amt { font-size: 22px; }
+  .q-bd { margin-bottom: 8px; }
+  .q-bd th { padding: 3px 6px; font-size: 9px; }
+  .q-bd td { padding: 3px 6px; font-size: 10px; }
+  .q-sp { margin-bottom: 8px; }
+  .q-sp td { padding: 2px 6px; font-size: 9.5px; }
+  .q-sp .sl { width: 80px; font-size: 9px; }
+  .q-sp .other-cell { font-size: 8.5px; line-height: 1.6; min-height: auto; }
+  .q-price-wrap { margin-bottom: 10px; }
+  .q-ps { width: 240px; font-size: 10px; }
+  .q-ps td { padding: 2px 8px; }
+  .q-ps .grand-row td { font-size: 11px; padding: 4px 8px; }
+  .q-notes { padding: 8px 10px; font-size: 8px; line-height: 1.7; }
+  .q-notes b { font-size: 8.5px; }
 }
 
 @media (max-width: 900px) {

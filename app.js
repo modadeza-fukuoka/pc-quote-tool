@@ -472,7 +472,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (ok) { buildPartRows(); render(); document.getElementById('data-status').textContent = '再取得済み (' + new Date().toLocaleTimeString() + ')'; }
   });
 
-  document.getElementById('btn-print').addEventListener('click', () => window.print());
+  document.getElementById('btn-print').addEventListener('click', () => {
+    // タイトルを空にしてブラウザのヘッダー/フッター表示を抑制
+    const origTitle = document.title;
+    document.title = ' ';
+    window.print();
+    document.title = origTitle;
+  });
 
   document.getElementById('btn-reset').addEventListener('click', () => {
     if (!confirm('入力内容をすべてリセットしますか？')) return;
