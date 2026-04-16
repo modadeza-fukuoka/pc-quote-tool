@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PC見積作成ツール</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- ===== LEFT PANEL (40%) ===== -->
+    <aside class="panel-left">
+      <div class="panel-scroll">
+        <div class="panel-header">
+          <h1 class="logo">PC見積作成</h1>
+          <div class="data-bar">
+            <span class="data-status" id="data-status">データ読み込み中...</span>
+            <button class="btn-reload" id="btn-reload" title="スプレッドシートから再読み込み">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M14 8A6 6 0 11 2.34 4.34" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 2v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="loading hidden" id="loading-indicator">
+            <div class="loading-spinner"></div>
+            <span>スプレッドシートからデータ取得中...</span>
+          </div>
+        </div>
+
+        <!-- 1. PC Type -->
+        <section class="form-section">
+          <div class="form-section-header">
+            <span class="step-badge">1</span>
+            <h2 class="form-section-title">PCタイプ</h2>
+          </div>
+          <div class="pc-type-selector">
+            <button class="type-card active" data-type="desktop" id="btn-desktop">
+              <svg width="24" height="24" viewBox="0 0 48 48" fill="none"><rect x="4" y="6" width="40" height="28" rx="3" stroke="currentColor" stroke-width="2.5"/><line x1="24" y1="34" x2="24" y2="40" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="40" x2="32" y2="40" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+              <span>デスクトップPC</span>
+            </button>
+            <button class="type-card" data-type="notebook" id="btn-notebook">
+              <svg width="24" height="24" viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="24" rx="2" stroke="currentColor" stroke-width="2.5"/><path d="M2 36h44" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+              <span>ノートPC</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- 2. Customer -->
+        <section class="form-section">
+          <div class="form-section-header">
+            <span class="step-badge">2</span>
+            <h2 class="form-section-title">お客様情報</h2>
+          </div>
+          <div class="form-field">
+            <label>宛名（会社名）</label>
+            <input type="text" id="customer-name" class="input" placeholder="株式会社○○">
+          </div>
+        </section>
+
+        <!-- AI Suggestion -->
+        <section class="form-section" id="ai-section">
+          <div class="form-section-header">
+            <span class="step-badge ai-badge">AI</span>
+            <h2 class="form-section-title">おすすめ構成を提案</h2>
+          </div>
+          <div class="ai-input-area">
+            <textarea id="ai-prompt" class="input textarea" rows="2" placeholder="例：Apexが快適に動くPC、動画編集用、事務作業、法人テレワーク用..."></textarea>
+            <div class="ai-budget-row">
+              <label>予算</label>
+              <input type="number" id="ai-budget-min" class="input input-sm" placeholder="下限" step="10000">
+              <span class="unit">〜</span>
+              <input type="number" id="ai-budget-max" class="input input-sm" placeholder="上限" step="10000">
+              <span class="unit">円</span>
+            </div>
+            <button class="btn-ai" id="btn-ai-suggest">
+              おすすめ構成を検索
+            </button>
+          </div>
+          <div class="ai-results hidden" id="ai-results">
+            <!-- AI suggestions will be rendered here -->
+          </div>
+        </section>
+
+        <!-- 3. Desktop Parts (select from master) -->
+        <section class="form-section" id="step3-desktop">
+          <div class="form-section-header">
+            <span class="step-badge">3</span>
+            <h2 class="form-section-title">パーツ構成</h2>
+          </div>
+          <div class="parts-list" id="parts-list">
+            <!-- Populated by JS from master data -->
+          </div>
+          <!-- Extra parts: multiple -->
+          <div class="extra-parts-section">
+            <div class="extra-parts-header">
+              <span class="form-section-title" style="font-size:12px;">追加パーツ</span>
+              <button class="btn-add-extra" id="btn-add-extra">+ 追加</button>
+            </div>
+            <div id="extra-parts-list"></div>
+          </div>
+        </section>
+
+        <!-- 3. Notebook -->
+        <section class="form-section hidden" id="step3-notebook">
+          <div class="form-section-header">
+            <span class="step-badge">3</span>
+            <h2 class="form-section-title">ノートPC情報</h2>
+          </div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>メーカー / 型番</label>
+              <input type="text" id="nb-model" class="input" placeholder="例: Lenovo ThinkPad L14 Gen5">
+            </div>
+            <div class="form-field">
+              <label>CPU</label>
+              <input type="text" id="nb-cpu" class="input" placeholder="例: Intel Core i5-1345U">
+            </div>
+            <div class="form-field two-col">
+              <div><label>メモリ</label><input type="text" id="nb-memory" class="input" placeholder="16GB"></div>
+              <div><label>ストレージ</label><input type="text" id="nb-storage" class="input" placeholder="SSD 512GB"></div>
+            </div>
+            <div class="form-field two-col">
+              <div><label>画面サイズ</label><input type="text" id="nb-display" class="input" placeholder="14インチ FHD"></div>
+              <div>
+                <label>状態</label>
+                <select id="nb-condition" class="input select">
+                  <option value="新品">新品</option>
+                  <option value="中古 Aランク">中古 Aランク</option>
+                  <option value="中古 Bランク">中古 Bランク</option>
+                  <option value="中古 Cランク">中古 Cランク</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>本体価格</label>
+              <input type="number" id="nb-cost" class="input input-price" placeholder="¥ 金額">
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. その他 -->
+        <section class="form-section">
+          <div class="form-section-header">
+            <span class="step-badge">4</span>
+            <h2 class="form-section-title">その他情報</h2>
+          </div>
+          <textarea id="other-info" class="input textarea" rows="4" placeholder="拡張スロット、USBポート等の情報..."></textarea>
+        </section>
+
+        <!-- 5. Price -->
+        <section class="form-section">
+          <div class="form-section-header">
+            <span class="step-badge">5</span>
+            <h2 class="form-section-title">価格設定</h2>
+          </div>
+          <div class="pricing-fields">
+            <div class="pricing-row">
+              <label>PC数量</label>
+              <div class="pricing-input-group">
+                <input type="number" id="pc-qty" class="input input-sm" value="1" min="1">
+                <span class="unit">台</span>
+              </div>
+            </div>
+            <div class="pricing-row">
+              <label>送料</label>
+              <div class="pricing-input-group">
+                <input type="number" id="shipping-fee" class="input input-sm" value="2000">
+                <span class="unit">円</span>
+              </div>
+            </div>
+            <div class="pricing-row">
+              <label>利益額</label>
+              <div class="pricing-input-group">
+                <input type="number" id="profit-input" class="input input-sm" value="0">
+                <span class="unit">円</span>
+              </div>
+            </div>
+          </div>
+          <!-- 利益管理 -->
+          <div class="profit-box">
+            <div class="profit-box-title">利益管理（見積書には表示されません）</div>
+            <div class="profit-row">
+              <label>原価合計</label>
+              <span class="profit-value" id="cost-total">¥0</span>
+            </div>
+            <div class="profit-row">
+              <label>販売金額（税抜）</label>
+              <span class="profit-value" id="selling-display">¥0</span>
+            </div>
+            <div class="profit-row" style="border-top:1px dashed #e0c878; padding-top:8px; margin-top:4px;">
+              <label>利益額</label>
+              <span class="profit-value" id="profit-amount">¥0</span>
+            </div>
+            <div class="profit-row">
+              <label>利益率</label>
+              <span class="profit-value" id="profit-rate">0%</span>
+            </div>
+          </div>
+          <!-- 特別値引き -->
+          <div class="discount-box">
+            <div class="discount-box-title">特別値引き</div>
+            <div class="pricing-row">
+              <label>値引き額（税抜）</label>
+              <div class="pricing-input-group">
+                <input type="number" id="discount-value" class="input input-sm" value="0">
+                <span class="unit">円</span>
+              </div>
+            </div>
+            <div class="profit-row">
+              <label>値引き後 販売金額</label>
+              <span class="profit-value" id="discount-selling-display">¥0</span>
+            </div>
+            <div class="profit-row">
+              <label>値引き後 利益額</label>
+              <span class="profit-value" id="discount-profit-display">¥0</span>
+            </div>
+            <div class="profit-row">
+              <label>値引き後 利益率</label>
+              <span class="profit-value" id="discount-rate-display">0%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. 備考 -->
+        <section class="form-section">
+          <div class="form-section-header">
+            <span class="step-badge">6</span>
+            <h2 class="form-section-title">備考</h2>
+          </div>
+          <div class="memo-template-bar">
+            <select id="memo-template-select" class="input select" style="font-size:12px;">
+              <option value="">テンプレートを選択...</option>
+              <option value="default">標準テンプレート</option>
+              <option value="short">短縮版</option>
+              <option value="warranty">保証付き</option>
+            </select>
+            <button class="btn-add-extra" id="btn-apply-template">適用</button>
+          </div>
+          <textarea id="memo" class="input textarea" rows="6" placeholder="備考欄の内容を入力...">見積書の有効期限は見積日より7日間とさせていただきます。
+ご購入時期により、販売価格が変更になる場合がございます。
+※指定パーツの価格は変動する可能性がございます。
+※マザーボードの構成内容は実際に搭載される内容と異なる場合がございます。
+ご指定がある場合は事前にお申し付けください。
+有効期間内であっても市場価格の変動により、最終的なお支払金額が変更となる場合がございます。</textarea>
+        </section>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-print">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6V1h8v5M4 12H2.5A1.5 1.5 0 011 10.5v-3A1.5 1.5 0 012.5 6h11A1.5 1.5 0 0115 7.5v3a1.5 1.5 0 01-1.5 1.5H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="4" y="10" width="8" height="5" rx=".5" stroke="currentColor" stroke-width="1.5"/></svg>
+            印刷 / PDF出力
+          </button>
+          <button class="btn-ghost" id="btn-reset">リセット</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== RIGHT PANEL (60%) ===== -->
+    <main class="panel-right">
+      <div class="preview-toolbar">
+        <span class="preview-label">見積書プレビュー</span>
+        <span class="preview-status">リアルタイム更新</span>
+      </div>
+      <div class="preview-scroll">
+        <div class="quote-paper" id="quote-paper"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="master-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
