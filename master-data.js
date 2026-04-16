@@ -292,6 +292,10 @@ async function fetchMasterData() {
       );
     });
 
+    // 取り扱いなし商品を除外
+    MASTER.gpu = MASTER.gpu.filter(item => !item.name.startsWith('40'));
+    MASTER.cpu = MASTER.cpu.filter(item => item.name !== 'Ryzen 7 5700X3D');
+
     // Also extract "その他" display data from cols 29, 30
     // These are row-aligned with the data (not per-part), stored separately
     MASTER._otherInfo = [];
